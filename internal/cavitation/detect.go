@@ -26,6 +26,12 @@ type WindowFlag struct {
 
 // JudgeWindows 对特征窗口序列做逐窗口越界判定。
 func (d *Detector) JudgeWindows(features []model.HarmonicFeatures, cfg *model.ThresholdConfig) []WindowFlag {
+	if cfg == nil {
+		// 阈值配置缺失：无从判定越界，返回空结果而非解引用 nil 触发 panic。
+		// 调用方（DetectEvents/Analyze）已就缺失配置返回 ErrInvalidInput，
+		// 此处仅作纵深防御，避免直接调用本方法的下游崩溃。
+		return nil
+	}
 	// 先对缺口比序列做平滑。
 	ratios := make([]float64, len(features))
 	for i, f := range features {

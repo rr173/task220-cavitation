@@ -38,6 +38,11 @@ func (s *EventService) Analyze(trial *model.Trial, cfg *model.ThresholdConfig, n
 	if trial.Status != model.TrialAnalyzing {
 		return res, fmt.Errorf("%w: trial %s is %s, not analyzing", model.ErrInvalidState, trial.ID, trial.Status)
 	}
+	// 阈值配置缺失时不得进入检测链路：JudgeWindows 会解引用 cfg.GapRatioThreshold
+	// 等字段，nil 配置将触发 panic。提前以非法输入终止，避免特征提取副作用。
+	if cfg == nil {
+		return res, fmt.Errorf("%w: threshold config is missing", model.ErrInvalidInput)
+	}
 	segments, err := s.segments.ListValidByTrial(trial.ID)
 	if err != nil {
 		return res, err

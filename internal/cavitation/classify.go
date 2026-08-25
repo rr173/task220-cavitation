@@ -1,6 +1,7 @@
 package cavitation
 
 import (
+	"fmt"
 	"math"
 
 	"task220-cavitation/internal/model"
@@ -19,6 +20,10 @@ func NewClassifier() *Classifier {
 // DetectEvents 从特征窗口序列中识别空化事件（含置信度）。
 // noisyChannels 为该试验被标记为机械噪声的通道数，用于置信度降权。
 func (c *Classifier) DetectEvents(features []model.HarmonicFeatures, cfg *model.ThresholdConfig, noisyChannels int) ([]model.CavitationEvent, error) {
+	if cfg == nil {
+		// 阈值配置缺失：不能解引用 cfg，否则越界判定会触发 nil 解引用 panic。
+		return nil, fmt.Errorf("%w: threshold config is missing", model.ErrInvalidInput)
+	}
 	if len(features) == 0 {
 		return nil, model.ErrInsufficientData
 	}
