@@ -18,9 +18,11 @@ func NewPackageStore(db *DB) *PackageStore { return &PackageStore{db: db} }
 // --- 阈值配置 ---
 
 // InsertThreshold 插入阈值配置版本。
+// 版本号为主键，使用纯 INSERT：相同版本号冲突时返回 ErrDuplicate，
+// 既不覆盖默认版本，也不覆盖既有版本，保证历史完整可回溯。
 func (s *PackageStore) InsertThreshold(c *model.ThresholdConfig) error {
 	_, err := s.db.SQL().Exec(
-		`INSERT OR REPLACE INTO thresholds (version, gap_ratio_threshold, energy_floor, confirm_windows, created_at)
+		`INSERT INTO thresholds (version, gap_ratio_threshold, energy_floor, confirm_windows, created_at)
 		 VALUES (?,?,?,?,?)`,
 		c.Version, c.GapRatioThreshold, c.EnergyFloor, c.ConfirmWindows, ts(c.CreatedAt),
 	)

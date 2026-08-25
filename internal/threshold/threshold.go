@@ -5,6 +5,7 @@ package threshold
 
 import (
 	"fmt"
+	"sync"
 
 	"task220-cavitation/internal/model"
 )
@@ -24,7 +25,10 @@ func Validate(cfg *model.ThresholdConfig) error {
 }
 
 // Manager 阈值管理器：维护当前生效阈值版本并派生新版本。
+// 线程安全：派生新版本的「读当前版本 -> 递增 -> 写回」在锁内原子完成，
+// 避免并发新增时两个请求读到同一当前版本号而派生出相同版本号。
 type Manager struct {
+	mu      sync.Mutex
 	current *model.ThresholdConfig
 }
 
@@ -36,13 +40,21 @@ func NewManager(current *model.ThresholdConfig) (*Manager, error) {
 	return &Manager{current: current}, nil
 }
 
-// Current 返回当前生效阈值。
-func (m *Manager) Current() *model.ThresholdConfig { return m.current }
+// Current 返回当前生效阈值（快照拷贝，调用方可安全使用）。
+func (m *Manager) Current() *model.ThresholdConfig {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c := *m.current
+	return &c
+}
 
-// NewVersion 基于当前阈值派生新版本（版本号 +1）。
+// NewVersion 基于当前阈值派生新版本（版本号严格递增）。
+// 版本号在当前值之上 +1，在锁内原子完成，保证连续两次新增得到不同且递增的版本号。
 func (m *Manager) NewVersion(gapRatio, energyFloor float64, confirmWindows int) (*model.ThresholdConfig, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	next := &model.ThresholdConfig{
-		Version:           m.current.Version,
+		Version:           m.current.Version + 1,
 		GapRatioThreshold: gapRatio,
 		EnergyFloor:       energyFloor,
 		ConfirmWindows:    confirmWindows,
