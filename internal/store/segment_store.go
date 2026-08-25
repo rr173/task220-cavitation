@@ -30,10 +30,11 @@ func scanSegment(sc scanner) (*model.AcousticSegment, error) {
 	return &s, nil
 }
 
-// Insert 插入片段。唯一约束 (trial_id, channel_index, start_time_ms) 冲突时返回 ErrDuplicate。
+// Insert 插入片段。唯一约束 (trial_id, channel_index, start_time_ms) 冲突时返回 ErrDuplicate，
+// 保证同试验/通道/时间窗在数据库中只保留一份。
 func (s *SegmentStore) Insert(seg *model.AcousticSegment) error {
 	_, err := s.db.SQL().Exec(
-		`INSERT OR IGNORE INTO segments (id, trial_id, channel_index, sample_rate_hz, start_time_ms, duration_ms, samples, peak_amplitude, rms, fingerprint, status, created_at)
+		`INSERT INTO segments (id, trial_id, channel_index, sample_rate_hz, start_time_ms, duration_ms, samples, peak_amplitude, rms, fingerprint, status, created_at)
 		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
 		seg.ID, seg.TrialID, seg.ChannelIndex, seg.SampleRateHz, seg.StartTimeMs, seg.DurationMs,
 		seg.Samples, seg.PeakAmplitude, seg.RMS, seg.Fingerprint, seg.Status, ts(seg.CreatedAt),

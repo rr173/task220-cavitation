@@ -68,8 +68,8 @@ func (s *SegmentService) Ingest(trial *model.Trial, channel int, sampleRate floa
 					model.ErrInvalidInput, sampleRate, e.SampleRateHz)
 			}
 			if e.StartTimeMs == startMs {
-				// 精确重复：幂等跳过，不视为时间倒退。
-				res.Inserted++
+				// 精确重复：幂等跳过，不视为时间倒退，也不计为新增。
+				res.Duplicate++
 				return res, nil
 			}
 			if e.StartTimeMs > channelMaxStart {
