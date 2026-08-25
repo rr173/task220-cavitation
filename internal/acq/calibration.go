@@ -69,12 +69,15 @@ func CrossCorrelate(ref, other []float64) (bestLag int, peak float64) {
 // sampleRate 为采样率（Hz），用于把样本 lag 换算为毫秒。
 func (c *Calibrator) Calibrate(trialID string, channel int, ref, other []float64, sampleRate float64) (*model.ChannelDelay, error) {
 	lag, corr := CrossCorrelate(ref, other)
+	// 质量分数取互相关峰值的幅值，保持归一化（0~1）且非负：
+	// 最佳对齐可能呈反极性（负相关），其幅值仍代表稳定对齐强度，
+	// 不能把负相关值直接持久化为相关度。
+	score := math.Abs(corr)
 	d := &model.ChannelDelay{
 		TrialID:          trialID,
 		ChannelIndex:     channel,
 		DelayMs:          float64(lag) / sampleRate * 1000.0,
-		// BUG10 注入：负相关峰值没有取绝对值，导致质量分数落为负数。
-		CorrelationScore: corr,
+		CorrelationScore: score,
 		Status:           model.DelayLocked,
 	}
 	if d.CorrelationScore < c.MinCorrelation {

@@ -63,6 +63,35 @@ func TestCalibratorDelayMs(t *testing.T) {
 	}
 }
 
+func TestCalibrateScoreNeverNegative(t *testing.T) {
+	// 反相信号：互相关峰值呈强负值（最佳对齐为反极性），
+	// 但质量分数必须保持非负且归一化。
+	rng := rand.New(rand.NewSource(11))
+	n := 400
+	ref := make([]float64, n)
+	for i := range ref {
+		ref[i] = math.Sin(2*math.Pi*float64(i)/20) + rng.NormFloat64()*0.05
+	}
+	other := make([]float64, n)
+	for i := range other {
+		other[i] = -ref[i]
+	}
+	c := NewCalibrator()
+	d, err := c.Calibrate("t-inv", 2, ref, other, 2000)
+	if err != nil {
+		t.Fatalf("calibrate: %v", err)
+	}
+	if d.CorrelationScore < 0 || d.CorrelationScore > 1 {
+		t.Fatalf("correlation score = %.3f, must be in [0,1]", d.CorrelationScore)
+	}
+	if d.CorrelationScore < 0.8 {
+		t.Fatalf("strong anti-phase alignment should yield high score, got %.3f", d.CorrelationScore)
+	}
+	if d.Status != model.DelayLocked {
+		t.Fatalf("status = %s, want locked for strong anti-phase alignment", d.Status)
+	}
+}
+
 func TestValidateRejectsInvalid(t *testing.T) {
 	seg := &model.AcousticSegment{SampleRateHz: 0, DurationMs: 100, ChannelIndex: 0}
 	if err := Validate(seg); err == nil {
