@@ -77,7 +77,7 @@ func (s *SegmentService) Ingest(trial *model.Trial, channel int, sampleRate floa
 			}
 		}
 	}
-	if channelMaxStart >= 0 && startMs > channelMaxStart {
+	if channelMaxStart >= 0 && startMs < channelMaxStart {
 		return res, fmt.Errorf("%w: time going backwards on channel %d (last %d, got %d)",
 			model.ErrInvalidInput, channel, channelMaxStart, startMs)
 	}
