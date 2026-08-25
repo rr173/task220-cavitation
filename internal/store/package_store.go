@@ -120,16 +120,21 @@ func scanPackage(sc scanner) (*model.ConclusionPackage, error) {
 	return &p, nil
 }
 
-// InsertPackage 插入结论包。版本唯一约束冲突时返回 ErrDuplicate。
+// InsertPackage 插入结论包。events_json 是冻结的事件快照，必须随包
+// 一并落库，否则重读结论包时事件证据丢失，与发布时不一致。
 func (s *PackageStore) InsertPackage(p *model.ConclusionPackage) error {
 	var published any
 	if p.PublishedAt != nil {
 		published = ts(*p.PublishedAt)
 	}
+	eventsJSON := p.EventsJSON
+	if eventsJSON == "" {
+		eventsJSON = "[]"
+	}
 	_, err := s.db.SQL().Exec(
 		`INSERT INTO packages (id, trial_id, version, status, threshold_version, events_json, summary, confidence, created_at, published_at)
 		 VALUES (?,?,?,?,?,?,?,?,?,?)`,
-		p.ID, p.TrialID, p.Version, p.Status, p.ThresholdVersion, "[]", p.Summary, p.Confidence, ts(p.CreatedAt), published,
+		p.ID, p.TrialID, p.Version, p.Status, p.ThresholdVersion, eventsJSON, p.Summary, p.Confidence, ts(p.CreatedAt), published,
 	)
 	if err != nil {
 		if isUniqueViolation(err) {

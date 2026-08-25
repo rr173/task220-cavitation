@@ -92,12 +92,19 @@ func (s *EventService) Analyze(trial *model.Trial, cfg *model.ThresholdConfig, n
 }
 
 // evidenceFor 生成事件的证据片段引用（窗口时间落在事件区间内的窗口）。
+// 区间为闭区间 [OnsetMs, DecayMs]：起始与消退两个边界窗口本身是事件的
+// 生命周期锚点，必须保留为证据，不能因严格不等而丢失。未检测到消退
+// （DecayMs == 0 表示未设置）时取到序列末尾。
 func evidenceFor(windows []model.HarmonicFeatures, ev model.CavitationEvent) string {
 	var ids []string
 	for _, w := range windows {
-		if w.WindowStartMs > ev.OnsetMs && (ev.DecayMs == 0 || w.WindowStartMs < ev.DecayMs) {
-			ids = append(ids, w.ID)
+		if w.WindowStartMs < ev.OnsetMs {
+			continue
 		}
+		if ev.DecayMs != 0 && w.WindowStartMs > ev.DecayMs {
+			continue
+		}
+		ids = append(ids, w.ID)
 	}
 	b, _ := json.Marshal(ids)
 	return string(b)

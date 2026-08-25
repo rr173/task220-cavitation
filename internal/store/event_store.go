@@ -33,13 +33,18 @@ func scanEvent(sc scanner) (*model.CavitationEvent, error) {
 	return &e, nil
 }
 
-// Insert 插入事件。
+// Insert 插入事件。evidence_segments 必须随事件一并落库，否则事件证据
+// 片段快照在持久化时丢失，重读后变为空集。
 func (s *EventStore) Insert(e *model.CavitationEvent) error {
+	evidence := e.EvidenceSegments
+	if evidence == "" {
+		evidence = "[]"
+	}
 	_, err := s.db.SQL().Exec(
 		`INSERT INTO events (id, trial_id, stage, onset_ms, sustained_ms, decay_ms, confidence, evidence_segments, reject_reason, created_at, updated_at)
 		 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
 		e.ID, e.TrialID, e.Stage, e.OnsetMs, e.SustainedMs, e.DecayMs,
-		e.Confidence, "[]", e.RejectReason, ts(e.CreatedAt), ts(e.UpdatedAt),
+		e.Confidence, evidence, e.RejectReason, ts(e.CreatedAt), ts(e.UpdatedAt),
 	)
 	if err != nil {
 		return fmt.Errorf("insert event: %w", err)
