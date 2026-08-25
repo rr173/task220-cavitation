@@ -45,6 +45,9 @@ func (s *PackageService) Publish(trialID string) (*model.ConclusionPackage, erro
 	if err != nil {
 		return nil, err
 	}
+	// 结论快照按起始时间从早到晚冻结事件证据：即便事件写入数据库的
+	// 顺序不同（或存储层顺序变更），也在发布点强制正序，避免倒序或丢事件。
+	conclusion.SortEvents(events)
 	eventsJSON, err := json.Marshal(events)
 	if err != nil {
 		return nil, fmt.Errorf("marshal events: %w", err)

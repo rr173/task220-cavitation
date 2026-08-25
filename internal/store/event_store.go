@@ -60,10 +60,11 @@ func (s *EventStore) Get(id string) (*model.CavitationEvent, error) {
 	return e, nil
 }
 
-// ListByTrial 返回试验全部事件（按起始时间排序）。
+// ListByTrial 返回试验全部事件（按起始时间升序，从早到晚）。
+// 结论快照据此冻结证据，事件写入数据库的先后不影响顺序。
 func (s *EventStore) ListByTrial(trialID string) ([]model.CavitationEvent, error) {
 	rows, err := s.db.SQL().Query(
-		`SELECT `+eventCols+` FROM events WHERE trial_id = ? ORDER BY onset_ms DESC`, trialID)
+		`SELECT `+eventCols+` FROM events WHERE trial_id = ? ORDER BY onset_ms ASC, id ASC`, trialID)
 	if err != nil {
 		return nil, err
 	}

@@ -66,9 +66,11 @@ func AggregateConfidence(events []model.CavitationEvent) float64 {
 	return best
 }
 
-// SortEvents 按起始时间升序排序事件（稳定排序）。
+// SortEvents 按起始时间升序排序事件（从早到晚，稳定排序）。
+// 结论快照必须以时间正序冻结证据，故发布前对事件原地排序，
+// 与事件写入数据库的先后无关：既不倒序，也不丢事件。
 func SortEvents(events []model.CavitationEvent) {
 	sort.SliceStable(events, func(i, j int) bool {
-		return events[i].OnsetMs > events[j].OnsetMs
+		return events[i].OnsetMs < events[j].OnsetMs
 	})
 }
