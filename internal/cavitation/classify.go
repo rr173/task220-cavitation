@@ -33,14 +33,19 @@ func (c *Classifier) DetectEvents(features []model.HarmonicFeatures, cfg *model.
 		SustainedMs: features[sustained].WindowStartMs,
 		Confidence:  c.confidence(features, cfg, noisyChannels),
 	}
+	// decay < 0 表示空化持续到采集窗口末尾、未见消退，属于开放事件：
+	// 不存在有效消退索引，必须避免用 -1 索引访问 features 触发运行时崩溃。
+	// 开放事件保持 DecayMs 为零、阶段停在 sustained（仍在持续），由下游用
+	// DecayMs==0 判定其为未消退事件（见 evidenceFor 的区间处理）。
 	if decay < 0 {
-		// BUG8 注入：开放事件被错误地当成了有效消退索引，运行时会访问 features[-1]。
-		ev.DecayMs = features[decay].WindowStartMs
-		ev.Stage = model.EventDecay
-	} else if sustained > onset {
 		ev.Stage = model.EventSustained
 	} else {
-		ev.Stage = model.EventInception
+		ev.DecayMs = features[decay].WindowStartMs
+		if sustained > onset {
+			ev.Stage = model.EventSustained
+		} else {
+			ev.Stage = model.EventInception
+		}
 	}
 	return []model.CavitationEvent{ev}, nil
 }

@@ -74,3 +74,41 @@ func TestDetectFindsOnsetAndDecay(t *testing.T) {
 		t.Fatalf("decay = %d should exceed sustained %d", decay, sustained)
 	}
 }
+
+// TestDetectEventsOpenEvent 覆盖空化持续到采集窗口末尾、没有消退窗口的
+// 场景：必须返回一个开放事件（DecayMs 为零、阶段为 sustained）而非崩溃。
+// 回归 BUG8：原实现对 decay==-1 仍取 features[-1].WindowStartMs 触发 panic。
+func TestDetectEventsOpenEvent(t *testing.T) {
+	// 构造 12 个窗口：前 4 个正常，后 8 个全部越界（持续到末尾，永不回落）。
+	features := make([]model.HarmonicFeatures, 12)
+	for i := range features {
+		gap := 0.01
+		if i >= 4 {
+			gap = 0.5
+		}
+		features[i] = model.HarmonicFeatures{
+			WindowStartMs:   int64(i * 200),
+			GapRatio:        gap,
+			BroadbandEnergy: gap,
+		}
+	}
+	cfg := &model.ThresholdConfig{GapRatioThreshold: 0.15, EnergyFloor: 0.001, ConfirmWindows: 3}
+	cl := NewClassifier()
+	events, err := cl.DetectEvents(features, cfg, 0)
+	if err != nil {
+		t.Fatalf("DetectEvents open event failed: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 open event, got %d", len(events))
+	}
+	ev := events[0]
+	if ev.DecayMs != 0 {
+		t.Errorf("open event DecayMs = %d, want 0 (no decay window)", ev.DecayMs)
+	}
+	if ev.Stage != model.EventSustained {
+		t.Errorf("open event Stage = %s, want %s", ev.Stage, model.EventSustained)
+	}
+	if ev.OnsetMs == 0 {
+		t.Errorf("open event should carry an onset time")
+	}
+}
