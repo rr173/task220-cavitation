@@ -190,7 +190,7 @@ func (s *SegmentService) CountNoisyChannels(trialID string) (int, error) {
 	}
 	noisy := map[int]bool{}
 	for _, seg := range segments {
-		if seg.Status == "noisy" {
+		if seg.Status == model.SegmentNoisy {
 			noisy[seg.ChannelIndex] = true
 		}
 	}
