@@ -102,7 +102,9 @@ func (s *SegmentService) MarkNoisy(segmentID string) error {
 	if seg.Status == model.SegmentDuplicate {
 		return fmt.Errorf("%w: duplicate segment cannot be marked noisy", model.ErrInvalidState)
 	}
-	return s.store.UpdateStatus(segmentID, model.SegmentValid)
+	// 机械噪声仅改变片段状态为 noisy 并据此降权置信度；不得把片段改成有效片段，
+	// 否则它会被特征提取纳入并丢失 noisy 标记。
+	return s.store.UpdateStatus(segmentID, model.SegmentNoisy)
 }
 
 // CalibrateChannels 以参考通道为基准，对其它通道做互相关延迟校准。

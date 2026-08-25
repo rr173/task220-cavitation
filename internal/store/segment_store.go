@@ -79,9 +79,10 @@ func (s *SegmentStore) ListByTrial(trialID string) ([]model.AcousticSegment, err
 	return out, rows.Err()
 }
 
-// UpdateStatus 更新片段状态。
+// UpdateStatus 更新片段状态。机械噪声标记写入 noisy 状态本身，
+// 不得在持久化时改写为 valid（否则会丢失 noisy 标记并使噪声片段错误地参与特征提取）。
 func (s *SegmentStore) UpdateStatus(id, status string) error {
-	_, err := s.db.SQL().Exec(`UPDATE segments SET status = CASE WHEN ? = 'noisy' THEN 'valid' ELSE ? END WHERE id = ?`, status, status, id)
+	_, err := s.db.SQL().Exec(`UPDATE segments SET status = ? WHERE id = ?`, status, id)
 	if err != nil {
 		return fmt.Errorf("update segment status: %w", err)
 	}
